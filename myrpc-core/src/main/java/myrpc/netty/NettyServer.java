@@ -12,6 +12,8 @@ import myrpc.common.model.MessageProtocol;
 import myrpc.common.model.RpcRequest;
 import myrpc.common.model.URLAddress;
 import myrpc.exception.MyRpcRemotingException;
+import myrpc.netty.message.codec.NettyDecoder;
+import myrpc.netty.message.codec.NettyEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,8 +51,8 @@ public class NettyServer {
                 protected void initChannel(SocketChannel socketChannel) {
                     socketChannel.pipeline()
                         // 编码、解码处理器
-//                        .addLast("encoder",new NettyEncoder<MessageProtocol<RpcRequest>>())
-//                        .addLast("decoder",new NettyDecoder())
+                        .addLast("encoder",new NettyEncoder<MessageProtocol<RpcRequest>>())
+                        .addLast("decoder",new NettyDecoder())
                         // 心跳处理器
 //                                .addLast("server-idle-handler",
 //                                        new IdleStateHandler(0, 0, 5, MILLISECONDS))
