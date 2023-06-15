@@ -20,6 +20,7 @@ public class ProviderManager {
     }
 
     public static void putProvider(String name, Provider provider) {
+        // 放入本地的provider緩存中(避免每次构造对象的开销)
         providerMapCache.put(name, provider);
     }
 }

@@ -11,6 +11,7 @@ public class RpcResponse {
      * 返回值
      */
     private Object returnValue;
+
     /**
      * 异常值
      */

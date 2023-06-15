@@ -17,4 +17,12 @@ public class MessageProtocol<T> {
     public T getBizDataBody() {
         return bizDataBody;
     }
+
+    @Override
+    public String toString() {
+        return "MessageProtocol{" +
+            "messageHeader=" + messageHeader +
+            ", bizDataBody=" + bizDataBody +
+            '}';
+    }
 }
