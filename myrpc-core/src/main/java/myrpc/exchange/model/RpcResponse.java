@@ -1,6 +1,8 @@
-package myrpc.common.model;
+package myrpc.exchange.model;
 
-public class RpcResponse {
+import java.io.Serializable;
+
+public class RpcResponse implements Serializable {
 
     /**
      * 消息的唯一id（占8字节）

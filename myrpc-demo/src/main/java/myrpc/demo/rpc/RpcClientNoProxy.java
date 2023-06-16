@@ -1,18 +1,16 @@
 package myrpc.demo.rpc;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.CharsetUtil;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import myrpc.common.enums.MessageFlagEnums;
 import myrpc.common.enums.MessageSerializeType;
-import myrpc.common.model.MessageHeader;
-import myrpc.common.model.MessageProtocol;
-import myrpc.common.model.RpcRequest;
+import myrpc.exchange.model.MessageHeader;
+import myrpc.exchange.model.MessageProtocol;
+import myrpc.exchange.model.RpcRequest;
 import myrpc.demo.common.model.User;
 import myrpc.netty.message.codec.NettyDecoder;
 import myrpc.netty.message.codec.NettyEncoder;
@@ -63,8 +61,8 @@ public class RpcClientNoProxy {
         rpcRequest.setParameterClasses(new Class[]{User.class,String.class});
 
         User user = new User("Jerry",10);
-        String messageArg = "hello hello!";
-        rpcRequest.setParams(new Object[]{user,messageArg});
+        String message = "hello hello!";
+        rpcRequest.setParams(new Object[]{user,message});
 
         // 构造协议头
         MessageHeader messageHeader = new MessageHeader();

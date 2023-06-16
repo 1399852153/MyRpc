@@ -1,7 +1,11 @@
 package myrpc.common.enums;
 
 
-import myrpc.common.model.MessageHeader;
+import myrpc.exchange.model.MessageHeader;
+import myrpc.common.util.ArrayUtil;
+import myrpc.exception.MyRpcException;
+
+import java.util.Arrays;
 
 /**
  * 消息序列化方式
@@ -11,17 +15,20 @@ public enum MessageSerializeType {
     /**
      * 消息序列化方式
      * */
-    JSON(transToCode("00001"),"json"),
-    HESSIAN(transToCode("00010"),"hessian"), // 暂不支持
+    JSON("00001","json"),
+    HESSIAN("00010","hessian"), // 暂不支持
+    JDK("00011","jdk"),
     ;
 
-    MessageSerializeType(Boolean[] code, String type) {
-        this.code = code;
+    MessageSerializeType(String codeStr, String type) {
+        this.code = transToCode(codeStr);
         this.type = type;
+        this.codeStr = codeStr;
     }
 
-    private Boolean[] code;
-    private String type;
+    private final Boolean[] code;
+    private final String type;
+    private final String codeStr;
 
     public Boolean[] getCode() {
         return code;
@@ -29,6 +36,20 @@ public enum MessageSerializeType {
 
     public String getType() {
         return type;
+    }
+
+    public String getCodeStr() {
+        return codeStr;
+    }
+
+    public static MessageSerializeType getByCode(Boolean[] code){
+        for(MessageSerializeType item : values()){
+            if(ArrayUtil.equals(code,item.getCode())){
+                return item;
+            }
+        }
+
+        throw new MyRpcException("un support MessageSerializeType=" + Arrays.toString(code));
     }
 
     private static Boolean[] transToCode(String code){

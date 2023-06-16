@@ -1,5 +1,7 @@
 package myrpc.common.model;
 
+import myrpc.exchange.model.MessageProtocol;
+
 public class MessageDecodeResult {
 
     private boolean needMoreData;

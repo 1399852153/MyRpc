@@ -1,4 +1,4 @@
-package myrpc.serialize.json;
+package myrpc.common.util;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import io.netty.util.CharsetUtil;
+import myrpc.serialize.json.NullValue;
 import myrpc.util.StringUtils;
 
 import java.io.IOException;

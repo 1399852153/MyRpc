@@ -1,10 +1,11 @@
 package myrpc.netty.util;
 
 import io.netty.buffer.ByteBuf;
-import myrpc.common.constant.MyRpcGlobalConstants;
-import myrpc.common.model.MessageHeader;
-import myrpc.common.model.MessageProtocol;
-import myrpc.serialize.json.JsonUtil;
+import myrpc.common.config.GlobalConfig;
+import myrpc.exchange.model.MessageHeader;
+import myrpc.exchange.model.MessageProtocol;
+import myrpc.serialize.MyRpcSerializer;
+import myrpc.serialize.SerializerManager;
 
 
 public class MessageCodecUtil {
@@ -32,9 +33,9 @@ public class MessageCodecUtil {
         // 写入消息uuid
         byteBuf.writeLong(messageHeader.getMessageId());
 
-        // todo 暂时写死json序列化，后续再抽象
-        String jsonStr = JsonUtil.obj2Str(messageProtocol.getBizDataBody());
-        byte[] bizMessageBytes = jsonStr.getBytes(MyRpcGlobalConstants.DEFAULT_CHARSET);
+        // 序列化消息体
+        MyRpcSerializer myRpcSerializer = SerializerManager.getSerializer(messageHeader.getSerializeType());
+        byte[] bizMessageBytes = myRpcSerializer.serialize(messageProtocol.getBizDataBody());
         // 获得并写入消息正文长度
         byteBuf.writeInt(bizMessageBytes.length);
         // 写入消息正文内容
@@ -77,14 +78,13 @@ public class MessageCodecUtil {
     /**
      * 报文协议正文body解码
      * */
-    public static <T> T messageBizDataDecode(ByteBuf byteBuf, int bizDataLength, Class<T> messageBizDataType){
+    public static <T> T messageBizDataDecode(MessageHeader messageHeader, ByteBuf byteBuf, Class<T> messageBizDataType){
         // 读取消息正文
-        byte[] bizDataBytes = new byte[bizDataLength];
+        byte[] bizDataBytes = new byte[messageHeader.getBizDataLength()];
         byteBuf.readBytes(bizDataBytes);
 
-        // todo 暂时写死json序列化，后续再抽象
-        String jsonStr = new String(bizDataBytes,MyRpcGlobalConstants.DEFAULT_CHARSET);
-
-        return JsonUtil.json2Obj(jsonStr,messageBizDataType);
+        // 反序列化消息体
+        MyRpcSerializer myRpcSerializer = SerializerManager.getSerializer(messageHeader.getSerializeType());
+        return (T) myRpcSerializer.deserialize(bizDataBytes,messageBizDataType);
     }
 }

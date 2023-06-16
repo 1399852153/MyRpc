@@ -1,4 +1,4 @@
-package myrpc.demo.purenetty;
+package myrpc.demo.pure_netty;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -10,9 +10,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.CharsetUtil;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import myrpc.demo.common.model.User;
-import myrpc.netty.message.codec.NettyDecoder;
-import myrpc.netty.message.codec.NettyEncoder;
-import myrpc.serialize.json.JsonUtil;
+import myrpc.common.util.JsonUtil;
 
 /**
  * 最原始的netty客户端demo

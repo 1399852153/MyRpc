@@ -1,38 +1,34 @@
 package myrpc.demo.rpc;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.util.CharsetUtil;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import myrpc.common.enums.MessageFlagEnums;
 import myrpc.common.enums.MessageSerializeType;
-import myrpc.common.model.MessageHeader;
-import myrpc.common.model.MessageProtocol;
-import myrpc.common.model.RpcRequest;
-import myrpc.common.model.RpcResponse;
-import myrpc.demo.common.model.User;
+import myrpc.exchange.model.MessageHeader;
+import myrpc.exchange.model.MessageProtocol;
+import myrpc.exchange.model.RpcRequest;
+import myrpc.exchange.model.RpcResponse;
 import myrpc.demo.common.service.UserService;
 import myrpc.demo.common.service.UserServiceImpl;
 import myrpc.netty.message.codec.NettyDecoder;
 import myrpc.netty.message.codec.NettyEncoder;
-import myrpc.netty.server.NettyServerHandler;
-import myrpc.serialize.json.JsonUtil;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RpcServerNoProxy {
+public class RpcServer {
 
-    private static Map<String,Object> interfaceImplMap = new HashMap<>();
+    private static final Map<String,Object> interfaceImplMap = new HashMap<>();
 
     static{
+        /**
+         * 简单一点配置死实现
+         * */
         interfaceImplMap.put(UserService.class.getName(), new UserServiceImpl());
     }
 
@@ -79,7 +75,7 @@ public class RpcServerNoProxy {
         messageHeader.setMessageFlag(MessageFlagEnums.RESPONSE.getCode());
         messageHeader.setTwoWayFlag(false);
         messageHeader.setEventFlag(false);
-        messageHeader.setSerializeType(MessageSerializeType.JSON.getCode());
+        messageHeader.setSerializeType(rpcRequestMessageProtocol.getMessageHeader().getSerializeType());
 
         RpcResponse rpcResponse = new RpcResponse();
         rpcResponse.setMessageId(requestMessageId);

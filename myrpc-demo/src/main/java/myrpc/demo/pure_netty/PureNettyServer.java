@@ -1,4 +1,4 @@
-package myrpc.demo.purenetty;
+package myrpc.demo.pure_netty;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
@@ -10,7 +10,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.CharsetUtil;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import myrpc.demo.common.model.User;
-import myrpc.serialize.json.JsonUtil;
+import myrpc.common.util.JsonUtil;
 
 public class PureNettyServer {
 

@@ -1,6 +1,8 @@
-package myrpc.common.model;
+package myrpc.exchange.model;
 
-public class MessageProtocol<T> {
+import java.io.Serializable;
+
+public class MessageProtocol<T> implements Serializable {
 
     private MessageHeader messageHeader;
     private T bizDataBody;

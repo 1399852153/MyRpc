@@ -1,9 +1,11 @@
-package myrpc.common.model;
+package myrpc.exchange.model;
 
 import myrpc.common.enums.MessageFlagEnums;
 import myrpc.common.enums.MessageSerializeType;
 
-public class MessageHeader {
+import java.io.Serializable;
+
+public class MessageHeader implements Serializable {
 
     public static final int MESSAGE_HEADER_LENGTH = 16;
     public static final int MESSAGE_SERIALIZE_TYPE_LENGTH = 5;

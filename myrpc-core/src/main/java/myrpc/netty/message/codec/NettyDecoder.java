@@ -5,6 +5,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import myrpc.common.enums.MessageFlagEnums;
 import myrpc.common.model.*;
+import myrpc.exchange.model.MessageHeader;
+import myrpc.exchange.model.MessageProtocol;
+import myrpc.exchange.model.RpcRequest;
+import myrpc.exchange.model.RpcResponse;
 import myrpc.netty.util.MessageCodecUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,12 +73,12 @@ public class NettyDecoder extends ByteToMessageDecoder {
         // 基于消息类型标识，解析rpc正文对象
         boolean messageFlag = messageHeader.getMessageFlag();
         if(messageFlag == MessageFlagEnums.REQUEST.getCode()){
-            RpcRequest rpcRequest = MessageCodecUtil.messageBizDataDecode(byteBuf,bizDataLength,RpcRequest.class);
+            RpcRequest rpcRequest = MessageCodecUtil.messageBizDataDecode(messageHeader,byteBuf,RpcRequest.class);
             MessageProtocol<RpcRequest> messageProtocol = new MessageProtocol<>(messageHeader,rpcRequest);
             // 正确的解析完一个rpc请求消息
             return MessageDecodeResult.decodeSuccess(messageProtocol);
         }else{
-            RpcResponse rpcResponse = MessageCodecUtil.messageBizDataDecode(byteBuf,bizDataLength,RpcResponse.class);
+            RpcResponse rpcResponse = MessageCodecUtil.messageBizDataDecode(messageHeader,byteBuf,RpcResponse.class);
             MessageProtocol<RpcResponse> messageProtocol = new MessageProtocol<>(messageHeader,rpcResponse);
             // 正确的解析完一个rpc响应消息
             return MessageDecodeResult.decodeSuccess(messageProtocol);

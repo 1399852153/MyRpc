@@ -3,14 +3,13 @@ package myrpc.netty.server;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import myrpc.common.enums.MessageFlagEnums;
-import myrpc.common.enums.MessageSerializeType;
-import myrpc.common.model.MessageHeader;
-import myrpc.common.model.MessageProtocol;
-import myrpc.common.model.RpcRequest;
-import myrpc.common.model.RpcResponse;
+import myrpc.exchange.model.MessageHeader;
+import myrpc.exchange.model.MessageProtocol;
+import myrpc.exchange.model.RpcRequest;
+import myrpc.exchange.model.RpcResponse;
 import myrpc.provider.Provider;
 import myrpc.provider.ProviderManager;
-import myrpc.serialize.json.JsonUtil;
+import myrpc.common.util.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +50,8 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<MessageProto
         messageHeader.setMessageFlag(MessageFlagEnums.RESPONSE.getCode());
         messageHeader.setTwoWayFlag(false);
         messageHeader.setEventFlag(false);
-        messageHeader.setSerializeType(MessageSerializeType.JSON.getCode());
+        // 使用相同的序列化类型
+        messageHeader.setSerializeType(rpcRequestMessageProtocol.getMessageHeader().getSerializeType());
         messageHeader.setResponseStatus((byte)'a');
 
         RpcResponse rpcResponse = new RpcResponse();

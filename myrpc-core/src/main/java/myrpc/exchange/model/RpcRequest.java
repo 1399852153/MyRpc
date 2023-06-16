@@ -1,11 +1,12 @@
-package myrpc.common.model;
+package myrpc.exchange.model;
 
+import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * rpc请求对象
  * */
-public class RpcRequest {
+public class RpcRequest implements Serializable {
 
     private static final AtomicLong INVOKE_ID = new AtomicLong(0);
 

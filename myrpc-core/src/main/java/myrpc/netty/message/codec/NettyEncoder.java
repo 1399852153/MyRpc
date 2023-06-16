@@ -3,7 +3,7 @@ package myrpc.netty.message.codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
-import myrpc.common.model.MessageProtocol;
+import myrpc.exchange.model.MessageProtocol;
 import myrpc.netty.util.MessageCodecUtil;
 
 public class NettyEncoder<T> extends MessageToByteEncoder<MessageProtocol<T>> {
