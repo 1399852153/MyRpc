@@ -16,7 +16,7 @@ public enum MessageSerializeType {
      * 消息序列化方式
      * */
     JSON("00001","json"),
-    HESSIAN("00010","hessian"), // 暂不支持
+    HESSIAN("00010","hessian"),
     JDK("00011","jdk"),
     ;
 

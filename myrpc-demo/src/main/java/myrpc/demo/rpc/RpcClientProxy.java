@@ -16,9 +16,13 @@ import myrpc.netty.client.NettyRpcResponseHandler;
 import myrpc.netty.message.codec.NettyDecoder;
 import myrpc.netty.message.codec.NettyEncoder;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class RpcClientProxy {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         Bootstrap bootstrap = new Bootstrap();
         EventLoopGroup eventLoopGroup = new NioEventLoopGroup(8,
             new DefaultThreadFactory("NettyClientWorker", true));
@@ -56,6 +60,17 @@ public class RpcClientProxy {
         }catch (Exception e){
             System.out.println("userService.hasException!");
             e.printStackTrace();
+        }
+
+        {
+            Thread.sleep(200L);
+            Map<String,User> paramMap = new HashMap<>();
+            paramMap.put("1",new User("a",10));
+            paramMap.put("2",new User("b",10));
+            paramMap.put("3",new User("c",10));
+
+            List<User> response = userService.getFriends(paramMap);
+            System.out.println("paramMap=" + paramMap + " response=" + response);
         }
     }
 }

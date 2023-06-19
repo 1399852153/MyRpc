@@ -16,6 +16,7 @@
         <maven.compiler.target>8</maven.compiler.target>
         <netty.version>4.1.90.Final</netty.version>
         <jackson.version>2.15.1</jackson.version>
+        <hessian.version>4.0.66</hessian.version>
         <slf4j.version>2.0.5</slf4j.version>
         <zookeeper.version>3.8.1</zookeeper.version>
         <junit.version>4.13.2</junit.version>
@@ -40,6 +41,12 @@
         </dependency>
 
         <dependency>
+            <groupId>com.caucho</groupId>
+            <artifactId>hessian</artifactId>
+            <version>${hessian.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
@@ -48,12 +55,6 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-log4j12</artifactId>
             <version>${slf4j.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.zookeeper</groupId>
-            <artifactId>zookeeper</artifactId>
-            <version>${zookeeper.version}</version>
         </dependency>
 
         <dependency>

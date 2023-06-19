@@ -1,11 +1,10 @@
 package myrpc.netty.util;
 
 import io.netty.buffer.ByteBuf;
-import myrpc.common.config.GlobalConfig;
 import myrpc.exchange.model.MessageHeader;
 import myrpc.exchange.model.MessageProtocol;
 import myrpc.serialize.MyRpcSerializer;
-import myrpc.serialize.SerializerManager;
+import myrpc.serialize.MyRpcSerializerManager;
 
 
 public class MessageCodecUtil {
@@ -34,7 +33,7 @@ public class MessageCodecUtil {
         byteBuf.writeLong(messageHeader.getMessageId());
 
         // 序列化消息体
-        MyRpcSerializer myRpcSerializer = SerializerManager.getSerializer(messageHeader.getSerializeType());
+        MyRpcSerializer myRpcSerializer = MyRpcSerializerManager.getSerializer(messageHeader.getSerializeType());
         byte[] bizMessageBytes = myRpcSerializer.serialize(messageProtocol.getBizDataBody());
         // 获得并写入消息正文长度
         byteBuf.writeInt(bizMessageBytes.length);
@@ -84,7 +83,7 @@ public class MessageCodecUtil {
         byteBuf.readBytes(bizDataBytes);
 
         // 反序列化消息体
-        MyRpcSerializer myRpcSerializer = SerializerManager.getSerializer(messageHeader.getSerializeType());
+        MyRpcSerializer myRpcSerializer = MyRpcSerializerManager.getSerializer(messageHeader.getSerializeType());
         return (T) myRpcSerializer.deserialize(bizDataBytes,messageBizDataType);
     }
 }

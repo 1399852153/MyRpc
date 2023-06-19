@@ -2,13 +2,14 @@ package myrpc.serialize;
 
 import myrpc.common.enums.MessageSerializeType;
 import myrpc.exception.MyRpcException;
+import myrpc.serialize.hession.HessianSerializer;
 import myrpc.serialize.jdk.JdkSerializer;
 import myrpc.serialize.json.JsonSerializer;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SerializerManager {
+public class MyRpcSerializerManager {
 
     public static final Map<MessageSerializeType, MyRpcSerializer> serializerMap = new ConcurrentHashMap<>();
     private static final Object LOCK = new Object();
@@ -38,6 +39,8 @@ public class SerializerManager {
                 return new JsonSerializer();
             case JDK:
                 return new JdkSerializer();
+            case HESSIAN:
+                return new HessianSerializer();
             default:
                 throw new MyRpcException("un support MessageSerializeType=" + messageSerializeType);
         }

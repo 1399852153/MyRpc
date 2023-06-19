@@ -50,7 +50,7 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<MessageProto
         messageHeader.setMessageFlag(MessageFlagEnums.RESPONSE.getCode());
         messageHeader.setTwoWayFlag(false);
         messageHeader.setEventFlag(false);
-        // 使用相同的序列化类型
+        // 响应使用和请求相同的序列化类型
         messageHeader.setSerializeType(rpcRequestMessageProtocol.getMessageHeader().getSerializeType());
         messageHeader.setResponseStatus((byte)'a');
 

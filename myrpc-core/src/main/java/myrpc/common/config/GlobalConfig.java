@@ -7,5 +7,5 @@ public class GlobalConfig {
     /**
      * 简单起见，直接写死(应该是可配置的)
      * */
-    public static final MessageSerializeType messageSerializeType = MessageSerializeType.JDK;
+    public static MessageSerializeType messageSerializeType = MessageSerializeType.HESSIAN;
 }

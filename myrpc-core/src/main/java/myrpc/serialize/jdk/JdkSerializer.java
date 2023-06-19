@@ -15,11 +15,10 @@ public class JdkSerializer implements MyRpcSerializer {
 
     @Override
     public byte[] serialize(Object obj) {
-        try {
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-            objectOutputStream.writeObject(obj);
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)){
 
+            objectOutputStream.writeObject(obj);
             objectOutputStream.flush();
 
             return byteArrayOutputStream.toByteArray();
@@ -30,9 +29,8 @@ public class JdkSerializer implements MyRpcSerializer {
 
     @Override
     public Object deserialize(byte[] bytes, Class<?> clazz) {
-        try {
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
-            ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+        try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+             ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream)){
 
             return objectInputStream.readObject();
         } catch (Exception e) {
