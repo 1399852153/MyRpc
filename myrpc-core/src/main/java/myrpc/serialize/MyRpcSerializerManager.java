@@ -6,12 +6,13 @@ import myrpc.serialize.hession.HessianSerializer;
 import myrpc.serialize.jdk.JdkSerializer;
 import myrpc.serialize.json.JsonSerializer;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MyRpcSerializerManager {
 
-    public static final Map<MessageSerializeType, MyRpcSerializer> serializerMap = new ConcurrentHashMap<>();
+    public static final Map<MessageSerializeType, MyRpcSerializer> serializerMap = new HashMap<>();
     private static final Object LOCK = new Object();
 
     public static MyRpcSerializer getSerializer(Boolean[] messageSerializeTypeCode){

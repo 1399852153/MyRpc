@@ -17,7 +17,6 @@ import java.util.List;
 
 /**
  * netty 解码器
- * @author shanreng
  */
 public class NettyDecoder extends ByteToMessageDecoder {
 

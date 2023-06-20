@@ -2,6 +2,9 @@ package myrpc.exchange.model;
 
 import java.io.Serializable;
 
+/**
+ * rpc响应对象
+ * */
 public class RpcResponse implements Serializable {
 
     /**

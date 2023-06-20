@@ -5,6 +5,9 @@ import myrpc.common.enums.MessageSerializeType;
 
 import java.io.Serializable;
 
+/**
+ * 共16字节的请求头
+ * */
 public class MessageHeader implements Serializable {
 
     public static final int MESSAGE_HEADER_LENGTH = 16;

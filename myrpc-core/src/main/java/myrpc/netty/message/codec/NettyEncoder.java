@@ -6,6 +6,9 @@ import io.netty.handler.codec.MessageToByteEncoder;
 import myrpc.exchange.model.MessageProtocol;
 import myrpc.netty.util.MessageCodecUtil;
 
+/**
+ * Netty编码器
+ * */
 public class NettyEncoder<T> extends MessageToByteEncoder<MessageProtocol<T>> {
 
     @Override

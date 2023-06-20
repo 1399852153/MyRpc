@@ -2,9 +2,19 @@ package myrpc.exchange.model;
 
 import java.io.Serializable;
 
+/**
+ * 完整的消息对象
+ * */
 public class MessageProtocol<T> implements Serializable {
 
+    /**
+     * 请求头
+     * */
     private MessageHeader messageHeader;
+
+    /**
+     * 请求体(实际的业务消息对象)
+     * */
     private T bizDataBody;
 
     public MessageProtocol(MessageHeader messageHeader, T bizDataBody) {

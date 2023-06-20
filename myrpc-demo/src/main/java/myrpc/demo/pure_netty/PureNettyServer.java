@@ -12,6 +12,9 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import myrpc.demo.common.model.User;
 import myrpc.common.util.JsonUtil;
 
+/**
+ * 最原始的netty服务端demo
+ * */
 public class PureNettyServer {
 
     public static void main(String[] args) throws InterruptedException {
