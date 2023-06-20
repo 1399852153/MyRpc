@@ -421,12 +421,7 @@ public class NettyDecoder extends ByteToMessageDecoder {
             // 循环，直到整个ByteBuf读取完
         }while(byteBuf.isReadable());
     }
-
-    /**
-     * @return
-     * 返回false代表还需要等待更多的数据，
-     * 返回true表示正常
-     * */
+    
     private MessageDecodeResult decodeHeader(ByteBuf byteBuf){
         int readable = byteBuf.readableBytes();
         if(readable < MessageHeader.MESSAGE_HEADER_LENGTH){
@@ -643,4 +638,212 @@ public class RpcClientNoProxy {
 todo 附netty处理流程图
 
 ### 3.3 基于动态代理实现一个完整的点对点rpc功能
+截止目前，我们已经实现了一个点对点rpc客户端/服务端交互的功能，但是客户端这边的逻辑依然比较复杂(buildMessage方法)。  
+前面提到，rpc中很重要的功能就是保持本地调用时语义的简洁性，即客户端实际使用时是希望直接用以下这种方式来进行调用，而不是去繁琐的构建底层的消息。
+```java
+    User user = new User("Jerry",10);
+    String message = "hello hello!";
+    // 发起rpc调用并获得返回值
+    User userFriend = userService.getUserFriend(user,message);
+    System.out.println("userService.getUserFriend result=" + userFriend);
+```
+#####
+rpc框架需要屏蔽掉构造底层消息发送/接受，序列化/反序列化相关的复杂性，而这时候就需要引入代理模式(动态代理)了。  
+在MyRpc的底层，我们将客户端需要调用的一个服务(比如UserService)抽象为Consumer对象，服务端的一个具体服务实现抽象为Provider对象。
+其中包含了对应的服务的类以及对应的服务地址，客户端这边使用jdk的动态代理生成代理对象，将复杂的、需要屏蔽的消息处理/网络交互等逻辑都封装在这个代理对象中。
+#####
+```java
+public class Consumer<T> {
+
+    private Class<?> interfaceClass;
+    private T proxy;
+
+    private Bootstrap bootstrap;
+    private URLAddress urlAddress;
+
+    public Consumer(Class<?> interfaceClass, Bootstrap bootstrap, URLAddress urlAddress) {
+        this.interfaceClass = interfaceClass;
+        this.bootstrap = bootstrap;
+        this.urlAddress = urlAddress;
+
+        ClientDynamicProxy clientDynamicProxy = new ClientDynamicProxy(bootstrap,urlAddress);
+
+        this.proxy = (T) Proxy.newProxyInstance(
+            clientDynamicProxy.getClass().getClassLoader(),
+            new Class[]{interfaceClass},
+            clientDynamicProxy);
+    }
+
+    public T getProxy() {
+        return proxy;
+    }
+
+    public Class<?> getInterfaceClass() {
+        return interfaceClass;
+    }
+}
+```
+```java
+public class ConsumerBootstrap {
+
+    private final Map<Class<?>,Consumer<?>> consumerMap = new HashMap<>();
+    private final Bootstrap bootstrap;
+    private final URLAddress urlAddress;
+
+    public ConsumerBootstrap(Bootstrap bootstrap, URLAddress urlAddress) {
+        this.bootstrap = bootstrap;
+        this.urlAddress = urlAddress;
+    }
+
+    public <T> Consumer<T> registerConsumer(Class<T> clazz){
+        if(!consumerMap.containsKey(clazz)){
+            Consumer<T> consumer = new Consumer<>(clazz,this.bootstrap,this.urlAddress);
+            consumerMap.put(clazz,consumer);
+            return consumer;
+        }
+
+        throw new MyRpcException("duplicate consumer! clazz=" + clazz);
+    }
+}
+```
+```java
+public class Provider<T> {
+
+    private Class<?> interfaceClass;
+    private T ref;
+    private URLAddress urlAddress;
+}
+```
+##### 客户端代理对象生成
+```java
+/**
+ * 客户端动态代理
+ * */
+public class ClientDynamicProxy implements InvocationHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(ClientDynamicProxy.class);
+
+    private final Bootstrap bootstrap;
+    private final URLAddress urlAddress;
+
+    public ClientDynamicProxy(Bootstrap bootstrap, URLAddress urlAddress) {
+        this.bootstrap = bootstrap;
+        this.urlAddress = urlAddress;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        Object localMethodResult = processLocalMethod(proxy,method,args);
+        if(localMethodResult != null){
+            // 处理toString等对象自带方法，不发起rpc调用
+            return localMethodResult;
+        }
+
+        logger.debug("ClientDynamicProxy before: methodName=" + method.getName());
+
+        // 构造请求和协议头
+        RpcRequest rpcRequest = new RpcRequest();
+        rpcRequest.setInterfaceName(method.getDeclaringClass().getName());
+        rpcRequest.setMethodName(method.getName());
+        rpcRequest.setParameterClasses(method.getParameterTypes());
+        rpcRequest.setParams(args);
+
+        MessageHeader messageHeader = new MessageHeader();
+        messageHeader.setMessageFlag(MessageFlagEnums.REQUEST.getCode());
+        messageHeader.setTwoWayFlag(false);
+        messageHeader.setEventFlag(true);
+        messageHeader.setSerializeType(GlobalConfig.messageSerializeType.getCode());
+        messageHeader.setResponseStatus((byte)'a');
+        messageHeader.setMessageId(rpcRequest.getMessageId());
+
+        logger.debug("ClientDynamicProxy rpcRequest={}", JsonUtil.obj2Str(rpcRequest));
+
+        ChannelFuture channelFuture = bootstrap.connect(urlAddress.getHost(),urlAddress.getPort()).sync();
+        Channel channel = channelFuture.sync().channel();
+        // 通过Promise，将netty的异步转为同步,参考dubbo DefaultFuture
+        DefaultFuture<RpcResponse> defaultFuture = DefaultFutureManager.createNewFuture(channel,rpcRequest);
+
+        channel.writeAndFlush(new MessageProtocol<>(messageHeader,rpcRequest));
+        logger.debug("ClientDynamicProxy writeAndFlush success, wait result");
+
+        // 调用方阻塞在这里
+        RpcResponse rpcResponse = defaultFuture.get();
+
+        logger.debug("ClientDynamicProxy defaultFuture.get() rpcResponse={}",rpcResponse);
+
+        return processRpcResponse(rpcResponse);
+    }
+
+    private Object processLocalMethod(Object proxy, Method method, Object[] args) throws Exception {
+        // 处理toString等对象自带方法，不发起rpc调用
+        if (method.getDeclaringClass() == Object.class) {
+            return method.invoke(proxy, args);
+        }
+        String methodName = method.getName();
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        if (parameterTypes.length == 0) {
+            if ("toString".equals(methodName)) {
+                return proxy.toString();
+            } else if ("hashCode".equals(methodName)) {
+                return proxy.hashCode();
+            }
+        } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
+            return proxy.equals(args[0]);
+        }
+
+        // 返回null标识非本地方法，需要进行rpc调用
+        return null;
+    }
+
+    private Object processRpcResponse(RpcResponse rpcResponse){
+        if(rpcResponse.getExceptionValue() == null){
+            // 没有异常，return正常的返回值
+            return rpcResponse.getReturnValue();
+        }else{
+            // 有异常，往外抛出去
+            throw new MyRpcRemotingException(rpcResponse.getExceptionValue());
+        }
+    }
+}
+```
+##### 代理模式下点对点rpc的客户端demo
+```java
+public class RpcClientProxy {
+
+    public static void main(String[] args) throws InterruptedException {
+        Bootstrap bootstrap = new Bootstrap();
+        EventLoopGroup eventLoopGroup = new NioEventLoopGroup(8, new DefaultThreadFactory("NettyClientWorker", true));
+
+        bootstrap.group(eventLoopGroup)
+            .channel(NioSocketChannel.class)
+            .handler(new ChannelInitializer<SocketChannel>() {
+                @Override
+                protected void initChannel(SocketChannel socketChannel) {
+                    socketChannel.pipeline()
+                        // 编码、解码处理器
+                        .addLast("encoder", new NettyEncoder<>())
+                        .addLast("decoder", new NettyDecoder())
+
+                        // 响应处理器
+                        .addLast("clientHandler", new NettyRpcResponseHandler())
+                    ;
+                }
+            });
+
+        ConsumerBootstrap consumerBootstrap = new ConsumerBootstrap(bootstrap, new URLAddress("127.0.0.1", 8888));
+        Consumer<UserService> userServiceConsumer = consumerBootstrap.registerConsumer(UserService.class);
+
+        // 获得UserService的代理对象
+        UserService userService = userServiceConsumer.getProxy();
+
+        User user = new User("Jerry", 10);
+        String message = "hello hello!";
+        // 发起rpc调用并获得返回值
+        User userFriend = userService.getUserFriend(user, message);
+        System.out.println("userService.getUserFriend result=" + userFriend);
+    }
+}
+```
+可以看到，引入了代理模式后的使用方式就变得简单很多了。   
+到这一步，我们已经实现了一个点对点的rpc通信的能力，并且如博客开头中所提到的，没有丧失本地调用语义的简洁性。
 ## 总结

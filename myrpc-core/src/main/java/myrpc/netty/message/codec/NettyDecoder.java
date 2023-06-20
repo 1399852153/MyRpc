@@ -48,11 +48,6 @@ public class NettyDecoder extends ByteToMessageDecoder {
         }while(byteBuf.isReadable());
     }
 
-    /**
-     * @return
-     * 返回false代表还需要等待更多的数据，
-     * 返回true表示正常
-     * */
     private MessageDecodeResult decodeHeader(ByteBuf byteBuf){
         int readable = byteBuf.readableBytes();
         if(readable < MessageHeader.MESSAGE_HEADER_LENGTH){
