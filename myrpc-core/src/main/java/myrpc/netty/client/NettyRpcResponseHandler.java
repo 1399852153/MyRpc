@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 客户端 rpc响应处理器
- * @author shanreng
  */
 public class NettyRpcResponseHandler extends SimpleChannelInboundHandler<MessageProtocol<RpcResponse>> {
 

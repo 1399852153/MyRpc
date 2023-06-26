@@ -22,8 +22,9 @@ MyRpc是我最近在学习MIT6.824分布式系统公开课时，使用java并基
 6. 使用时间轮，支持设置消费者调用超时时间
 #####
 限于篇幅，以上功能会拆分为两篇博客分别介绍。其中前3个功能实现了基本的点对点通信的rpc功能，将在本篇博客中结合源码详细分析。
-
-todo MyRpc架构图
+#####
+MyRpc架构图
+![img.png](img.png)
 
 ## 3. MyRpc源码分析
 ### 3.1 基于netty的极简客户端/服务端交互demo
@@ -131,15 +132,18 @@ public class PureNettyClient {
 * **拆包问题：** 假设应用层发送的一次请求数据量比较大(比如100Mb)，而tcp层的数据包容量的最大值是有限的，所以应用层较大的一次请求数据会被**拆分**为多个包分开发送。
 这就导致接收端接受到的某个数据包其实并不是完整的应用层请求数据，没法直接交给应用程序去使用，
 而必须等待后续对应请求的所有数据包都接受完成后，才能组装成完整的请求对象再交给应用层处理。
-* 一个数据包中可能同时存在黏包问题和拆包问题(如下图所示)。
-
-todo 黏包拆包示意图
+* 可以看到，上述的黏包/拆包问题并不能看做是tcp的问题，而是应用层最终需求与tcp传输层功能不匹配导致的问题。
+tcp出于传输效率的考虑无法解决这个问题，所以黏包拆包问题最终只能在更上面的应用层自己来处理。
+#####
+一个数据包中可能同时存在黏包问题和拆包问题(如下图所示)
+黏包拆包示意图
+![img_1.png](img_1.png)
 
 ##### 黏包/拆包问题解决方案
 解决黏包/拆包问题最核心的思路是，如何知道一个应用层完整请求的边界。
 对于黏包问题，基于边界可以独立的拆分出每一个请求；对于拆包问题，如果发现收到的数据包末尾没有边界，则继续等待新的数据包，直到发现边界后再一并上交给应用程序。  
 #####
-主流的解决黏包拆包的应用层消息协议有三种：
+主流的解决黏包拆包的应用层协议设计方案有三种：
 #####
 |                    | 介绍                                                  | 优点                           | 缺点                                       |
 |--------------------|-----------------------------------------------------|------------------------------|------------------------------------------|
@@ -147,7 +151,7 @@ todo 黏包拆包示意图
 | 2.基于特殊分隔符的协议       | 约定一个特殊的分隔符，以这个分割符为消息边界                              | 简单;且消息体长度是可变的，性能好            | 消息体的业务数据不允许包含这个特殊分隔符，否则会错误的拆分数据包。因此兼容性较差 |
 | 3.基于业务数据长度编码的协议    | 设计一个固定大小的消息请求头(比如固定16字节、20字节大小)，在消息请求头中包含实际的业务消息体长度 | 消息体长度可变，性能好；对业务数据内容无限制，兼容性也好 | 实现起来稍显复杂                                 |
 #####
-对于流行的rpc框架，一般都是选用性能与兼容性皆有的方案3：即自己设计一个固定大小的、包含了请求体长度字段的请求头。MyRpc参考dubbo，同样设计了一个固定16字节大小的请求头。
+对于流行的rpc框架，一般都是选用性能与兼容性皆有的方案3：即自己设计一个固定大小的、包含了请求体长度字段的请求头。MyRpc参考dubbo，也设计了一个固定16字节大小的请求头(里面有几个字段暂时没用上)。
 #####
 请求头: MessageHeader
 ```java
@@ -220,7 +224,11 @@ public class MessageProtocol<T> implements Serializable {
     private T bizDataBody;
 }
 ```
-##### 应用层rpc请求/响应对象
+#####
+MyRpc消息示例图
+![img_2.png](img_2.png)
+
+##### rpc请求/响应对象
 ```java
 /**
  * rpc请求对象
@@ -282,7 +290,6 @@ public class RpcResponse implements Serializable {
     private Exception exceptionValue;
 }
 ```
-todo 附MyRpc消息示例图
 
 ##### 处理自定义消息的netty编解码器
 在上一节的netty demo中的消息处理器中，一共做了两件事情；一是将原始数据包的字节流转化成了应用程序所需的String对象；二是拿到String对象后进行响应的业务处理(比如打印在控制台上)。
@@ -634,12 +641,13 @@ public class RpcClientNoProxy {
     }
 }
 ```
-
-todo 附netty处理流程图
+#####
+netty处理流程图
+![img_3.png](img_3.png)
 
 ### 3.3 基于动态代理实现一个完整的点对点rpc功能
 截止目前，我们已经实现了一个点对点rpc客户端/服务端交互的功能，但是客户端这边的逻辑依然比较复杂(buildMessage方法)。  
-前面提到，rpc中很重要的功能就是保持本地调用时语义的简洁性，即客户端实际使用时是希望直接用以下这种方式来进行调用，而不是去繁琐的构建底层的消息。
+前面提到，rpc中很重要的功能就是保持本地调用时语义的简洁性，即客户端实际使用时是希望直接用以下这种方式来进行调用，而不是去繁琐的处理底层的网络交互逻辑。
 ```java
     User user = new User("Jerry",10);
     String message = "hello hello!";
@@ -806,6 +814,58 @@ public class ClientDynamicProxy implements InvocationHandler {
     }
 }
 ```
+##### 客户端接收响应处理(通过DefaultFuture实现异步转同步)
+```java
+/**
+ * 客户端 rpc响应处理器
+ */
+public class NettyRpcResponseHandler extends SimpleChannelInboundHandler<MessageProtocol<RpcResponse>> {
+
+    private static final Logger logger = LoggerFactory.getLogger(NettyRpcResponseHandler.class);
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext channelHandlerContext, MessageProtocol<RpcResponse> rpcResponseMessageProtocol) throws Exception {
+        logger.debug("NettyRpcResponseHandler channelRead0={}",JsonUtil.obj2Str(rpcResponseMessageProtocol));
+
+        // 触发客户端的future，令其同步阻塞的线程得到结果
+        DefaultFutureManager.received(rpcResponseMessageProtocol.getBizDataBody());
+    }
+}
+```
+```java
+public class DefaultFutureManager {
+
+    private static Logger logger = LoggerFactory.getLogger(DefaultFutureManager.class);
+
+    public static final Map<Long,DefaultFuture> DEFAULT_FUTURE_CACHE = new ConcurrentHashMap<>();
+
+    public static void received(RpcResponse rpcResponse){
+        Long messageId = rpcResponse.getMessageId();
+
+        logger.debug("received rpcResponse={},DEFAULT_FUTURE_CACHE={}",rpcResponse,DEFAULT_FUTURE_CACHE);
+        DefaultFuture defaultFuture = DEFAULT_FUTURE_CACHE.remove(messageId);
+
+        if(defaultFuture != null){
+            logger.debug("remove defaultFuture success");
+            if(rpcResponse.getExceptionValue() != null){
+                // 异常处理
+                defaultFuture.completeExceptionally(rpcResponse.getExceptionValue());
+            }else{
+                // 正常返回
+                defaultFuture.complete(rpcResponse);
+            }
+        }else{
+            logger.debug("remove defaultFuture fail");
+        }
+    }
+
+    public static DefaultFuture createNewFuture(Channel channel, RpcRequest rpcRequest){
+        DefaultFuture defaultFuture = new DefaultFuture(channel,rpcRequest);
+
+        return defaultFuture;
+    }
+}
+```
 ##### 代理模式下点对点rpc的客户端demo
 ```java
 public class RpcClientProxy {
@@ -847,3 +907,6 @@ public class RpcClientProxy {
 可以看到，引入了代理模式后的使用方式就变得简单很多了。   
 到这一步，我们已经实现了一个点对点的rpc通信的能力，并且如博客开头中所提到的，没有丧失本地调用语义的简洁性。
 ## 总结
+* 这篇博客是我关于Mit6.824分布式系统公开课lab的第一篇博客，按照计划会将实现简易版rpc和raft k/v数据库的心得以博客的形式分享出来，希望能帮助到对分布式系统相关技术的小伙伴。
+* 打个广告：对于英语不好(没法直接啃生肉)但又对国外著名的计算机公开课(涉及操作系统、数据库、分布式系统、编译原理、计算机网络、算法等等)感兴趣的小伙伴，可以咨询simviso购买中英翻译质量很高的公开课视频(比如Mit6.824，b站上开放了一部分免费的视频：https://www.bilibili.com/video/BV1x7411M7Sf)。
+* 博客中展示的完整代码在我的github上：https://github.com/1399852153/MyRpc(release/lab1分支)，内容如有错误，还请多多指教。

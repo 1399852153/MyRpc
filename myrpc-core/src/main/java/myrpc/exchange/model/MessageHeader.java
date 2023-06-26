@@ -12,6 +12,10 @@ public class MessageHeader implements Serializable {
 
     public static final int MESSAGE_HEADER_LENGTH = 16;
     public static final int MESSAGE_SERIALIZE_TYPE_LENGTH = 5;
+
+    /**
+     * 协议魔数，随便取的
+     * */
     public static final short MAGIC = (short)0x2233;
 
     // ================================ 消息头 =================================

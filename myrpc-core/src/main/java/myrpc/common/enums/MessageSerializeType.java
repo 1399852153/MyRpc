@@ -9,7 +9,6 @@ import java.util.Arrays;
 
 /**
  * 消息序列化方式
- * @author shanreng
  */
 public enum MessageSerializeType {
     /**

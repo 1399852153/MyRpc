@@ -8,7 +8,6 @@ import java.lang.reflect.Proxy;
 
 /**
  * consumer
- * @author shanreng
  */
 public class Consumer<T> {
 
