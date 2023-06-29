@@ -7,6 +7,7 @@ import myrpc.common.config.GlobalConfig;
 import myrpc.common.enums.MessageFlagEnums;
 import myrpc.common.enums.MessageSerializeType;
 import myrpc.common.model.*;
+import myrpc.exception.MyRpcException;
 import myrpc.exception.MyRpcRemotingException;
 import myrpc.exchange.DefaultFuture;
 import myrpc.exchange.DefaultFutureManager;
@@ -15,11 +16,15 @@ import myrpc.exchange.model.MessageHeader;
 import myrpc.exchange.model.MessageProtocol;
 import myrpc.exchange.model.RpcRequest;
 import myrpc.exchange.model.RpcResponse;
+import myrpc.netty.client.NettyClient;
+import myrpc.netty.client.NettyClientFactory;
+import myrpc.registry.Registry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.List;
 
 /**
  * 客户端动态代理
@@ -28,12 +33,10 @@ public class ClientDynamicProxy implements InvocationHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientDynamicProxy.class);
 
-    private final Bootstrap bootstrap;
-    private final URLAddress urlAddress;
+    private final Registry registry;
 
-    public ClientDynamicProxy(Bootstrap bootstrap, URLAddress urlAddress) {
-        this.bootstrap = bootstrap;
-        this.urlAddress = urlAddress;
+    public ClientDynamicProxy(Registry registry) {
+        this.registry = registry;
     }
 
     @Override
@@ -45,6 +48,10 @@ public class ClientDynamicProxy implements InvocationHandler {
         }
 
         logger.debug("ClientDynamicProxy before: methodName=" + method.getName());
+
+        String serviceName = method.getDeclaringClass().getName();
+        List<ServiceInfo> serviceInfoList = registry.discovery(serviceName);
+        logger.debug("serviceInfoList.size={},serviceInfoList={}",serviceInfoList.size(),JsonUtil.obj2Str(serviceInfoList));
 
         // 构造请求和协议头
         RpcRequest rpcRequest = new RpcRequest();
@@ -63,8 +70,10 @@ public class ClientDynamicProxy implements InvocationHandler {
 
         logger.debug("ClientDynamicProxy rpcRequest={}", JsonUtil.obj2Str(rpcRequest));
 
-        ChannelFuture channelFuture = bootstrap.connect(urlAddress.getHost(),urlAddress.getPort()).sync();
-        Channel channel = channelFuture.sync().channel();
+        NettyClient nettyClient = getTargetClient(serviceInfoList);
+        logger.debug("ClientDynamicProxy getTargetClient={}", nettyClient);
+        Channel channel = nettyClient.getChannel();
+
         // 通过Promise，将netty的异步转为同步,参考dubbo DefaultFuture
         DefaultFuture<RpcResponse> defaultFuture = DefaultFutureManager.createNewFuture(channel,rpcRequest);
 
@@ -108,5 +117,12 @@ public class ClientDynamicProxy implements InvocationHandler {
             // 有异常，往外抛出去
             throw new MyRpcRemotingException(rpcResponse.getExceptionValue());
         }
+    }
+
+    private NettyClient getTargetClient(List<ServiceInfo> serviceInfoList){
+        // 简单起见，先用第一个
+        ServiceInfo selectedServiceInfo = serviceInfoList.get(0);
+        logger.debug("selected info = " + selectedServiceInfo.getUrlAddress());
+        return NettyClientFactory.getNettyClient(selectedServiceInfo.getUrlAddress());
     }
 }

@@ -3,6 +3,7 @@ package myrpc.consumer;
 import io.netty.bootstrap.Bootstrap;
 import myrpc.common.model.URLAddress;
 import myrpc.consumer.proxy.ClientDynamicProxy;
+import myrpc.registry.Registry;
 
 import java.lang.reflect.Proxy;
 
@@ -14,15 +15,11 @@ public class Consumer<T> {
     private final Class<?> interfaceClass;
     private final T proxy;
 
-    private final Bootstrap bootstrap;
-    private final URLAddress urlAddress;
 
-    public Consumer(Class<?> interfaceClass, Bootstrap bootstrap, URLAddress urlAddress) {
+    public Consumer(Class<?> interfaceClass,  Registry registry) {
         this.interfaceClass = interfaceClass;
-        this.bootstrap = bootstrap;
-        this.urlAddress = urlAddress;
 
-        ClientDynamicProxy clientDynamicProxy = new ClientDynamicProxy(bootstrap,urlAddress);
+        ClientDynamicProxy clientDynamicProxy = new ClientDynamicProxy(registry);
 
         this.proxy = (T) Proxy.newProxyInstance(
                 clientDynamicProxy.getClass().getClassLoader(),
