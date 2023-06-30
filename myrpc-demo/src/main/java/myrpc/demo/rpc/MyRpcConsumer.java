@@ -12,12 +12,13 @@ import myrpc.registry.enums.RegistryCenterTypeEnum;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.LockSupport;
 
 public class MyRpcConsumer {
 
     public static void main(String[] args) throws InterruptedException {
         Registry registry = RegistryFactory.getRegistry(
-            new RegistryConfig(RegistryCenterTypeEnum.ZOOKEEPER.getCode(), "127.0.0.1:2181"));
+            new RegistryConfig(RegistryCenterTypeEnum.ZOOKEEPER_CURATOR.getCode(), "127.0.0.1:2181"));
 
         ConsumerBootstrap consumerBootstrap = new ConsumerBootstrap()
             .registry(registry);
@@ -50,5 +51,7 @@ public class MyRpcConsumer {
             List<User> response = userService.getFriends(paramMap);
             System.out.println("paramMap=" + paramMap + " response=" + response);
         }
+
+        LockSupport.park();
     }
 }

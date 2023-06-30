@@ -10,7 +10,8 @@ public enum RegistryCenterTypeEnum {
     /**
      * 注册中心类型
      * */
-    ZOOKEEPER("ZOOKEEPER","zookeeper注册中心"),
+    ZOOKEEPER("ZOOKEEPER","zookeeper注册中心(原始客户端)"),
+    ZOOKEEPER_CURATOR("ZOOKEEPER_CURATOR","zookeeper注册中心(curator客户端)"),
     ;
     private String code;
     private String message;

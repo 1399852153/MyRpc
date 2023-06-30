@@ -12,6 +12,8 @@ public class RegistryFactory {
         switch (registryCenterTypeEnum){
             case ZOOKEEPER:
                 return new ZookeeperRegistry(registryConfig.getRegistryAddress());
+            case ZOOKEEPER_CURATOR:
+                return new ZkCuratorRegistry(registryConfig.getRegistryAddress());
             default:
                 throw new MyRpcException("getRegistry type illegal: type=" + registryConfig.getRegistryCenterType());
         }

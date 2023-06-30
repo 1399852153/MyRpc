@@ -7,7 +7,6 @@ import org.apache.zookeeper.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,8 +20,6 @@ public class ZookeeperRegistry implements Registry{
 
     private static final Logger logger = LoggerFactory.getLogger(ZookeeperRegistry.class);
 
-    public static final String ZK_BASE_PATH = "/my_rpc";
-
     private final ZooKeeper zooKeeper;
 
     private final ConcurrentHashMap<String,List<ServiceInfo>> serviceInfoCacheMap = new ConcurrentHashMap<>();
@@ -30,7 +27,10 @@ public class ZookeeperRegistry implements Registry{
     public ZookeeperRegistry(String zkServerAddress) {
         try {
             this.zooKeeper = new ZooKeeper(zkServerAddress,2000, event -> {});
-        } catch (IOException e) {
+
+            // 确保root节点是一定存在的
+            createPersistentNode(ZK_BASE_PATH);
+        } catch (Exception e) {
             throw new MyRpcException("init zkClient error",e);
         }
     }
@@ -57,11 +57,9 @@ public class ZookeeperRegistry implements Registry{
         try {
             String serviceNameNodePath = getServiceNameNodePath(serviceName);
 
-            if(zooKeeper.exists(serviceNameNodePath,false) == null){
-                // 服务名节点是永久节点
-                zooKeeper.create(serviceNameNodePath, "".getBytes(StandardCharsets.UTF_8), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-                logger.info("createServiceNameNode success! serviceNameNodePath={}",serviceNameNodePath);
-            }
+            // 服务名节点是永久节点
+            createPersistentNode(serviceNameNodePath);
+            logger.info("createServiceNameNode success! serviceNameNodePath={}",serviceNameNodePath);
         } catch (Exception e) {
             throw new MyRpcException("createServiceNameNode error",e);
         }
@@ -79,6 +77,17 @@ public class ZookeeperRegistry implements Registry{
             logger.info("createProviderInfoNode success! path={}",providerInfoNodePath);
         } catch (Exception e) {
             throw new MyRpcException("createProviderInfoNode error",e);
+        }
+    }
+
+    private void createPersistentNode(String path){
+        try {
+            if (zooKeeper.exists(path, false) == null) {
+                // 服务名节点是永久节点
+                zooKeeper.create(path, "".getBytes(StandardCharsets.UTF_8), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            }
+        }catch (Exception e){
+            throw new MyRpcException("createPersistentNode error",e);
         }
     }
 
