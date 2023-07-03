@@ -1,27 +1,25 @@
 package myrpc.consumer.proxy;
 
-import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
 import myrpc.balance.LoadBalance;
 import myrpc.common.config.GlobalConfig;
 import myrpc.common.enums.MessageFlagEnums;
-import myrpc.common.enums.MessageSerializeType;
-import myrpc.common.model.*;
+import myrpc.common.model.ServiceInfo;
+import myrpc.common.model.URLAddress;
+import myrpc.common.util.JsonUtil;
 import myrpc.consumer.context.ConsumerRpcContextHolder;
 import myrpc.exception.MyRpcException;
 import myrpc.exception.MyRpcRemotingException;
 import myrpc.exchange.DefaultFuture;
 import myrpc.exchange.DefaultFutureManager;
-import myrpc.common.util.JsonUtil;
 import myrpc.exchange.model.MessageHeader;
 import myrpc.exchange.model.MessageProtocol;
 import myrpc.exchange.model.RpcRequest;
 import myrpc.exchange.model.RpcResponse;
-import myrpc.util.Tuple;
 import myrpc.netty.client.NettyClient;
 import myrpc.netty.client.NettyClientFactory;
 import myrpc.registry.Registry;
+import myrpc.util.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
