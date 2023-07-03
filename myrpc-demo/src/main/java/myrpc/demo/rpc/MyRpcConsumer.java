@@ -1,5 +1,6 @@
 package myrpc.demo.rpc;
 
+import myrpc.balance.SimpleRoundRobinBalance;
 import myrpc.consumer.Consumer;
 import myrpc.consumer.ConsumerBootstrap;
 import myrpc.demo.common.model.User;
@@ -21,7 +22,8 @@ public class MyRpcConsumer {
             new RegistryConfig(RegistryCenterTypeEnum.ZOOKEEPER_CURATOR.getCode(), "127.0.0.1:2181"));
 
         ConsumerBootstrap consumerBootstrap = new ConsumerBootstrap()
-            .registry(registry);
+            .registry(registry)
+            .loadBalance(new SimpleRoundRobinBalance());
 
         // 注册消费者
         Consumer<UserService> consumer = consumerBootstrap.registerConsumer(UserService.class);

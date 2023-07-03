@@ -3,10 +3,12 @@ package myrpc.consumer.proxy;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import myrpc.balance.LoadBalance;
 import myrpc.common.config.GlobalConfig;
 import myrpc.common.enums.MessageFlagEnums;
 import myrpc.common.enums.MessageSerializeType;
 import myrpc.common.model.*;
+import myrpc.consumer.context.ConsumerRpcContextHolder;
 import myrpc.exception.MyRpcException;
 import myrpc.exception.MyRpcRemotingException;
 import myrpc.exchange.DefaultFuture;
@@ -34,9 +36,11 @@ public class ClientDynamicProxy implements InvocationHandler {
     private static final Logger logger = LoggerFactory.getLogger(ClientDynamicProxy.class);
 
     private final Registry registry;
+    private final LoadBalance loadBalance;
 
-    public ClientDynamicProxy(Registry registry) {
+    public ClientDynamicProxy(Registry registry, LoadBalance loadBalance) {
         this.registry = registry;
+        this.loadBalance = loadBalance;
     }
 
     @Override
@@ -71,7 +75,7 @@ public class ClientDynamicProxy implements InvocationHandler {
         logger.debug("ClientDynamicProxy rpcRequest={}", JsonUtil.obj2Str(rpcRequest));
 
         NettyClient nettyClient = getTargetClient(serviceInfoList);
-        logger.debug("ClientDynamicProxy getTargetClient={}", nettyClient);
+        logger.info("ClientDynamicProxy getTargetClient={}", nettyClient);
         Channel channel = nettyClient.getChannel();
 
         // 通过Promise，将netty的异步转为同步,参考dubbo DefaultFuture
@@ -120,9 +124,20 @@ public class ClientDynamicProxy implements InvocationHandler {
     }
 
     private NettyClient getTargetClient(List<ServiceInfo> serviceInfoList){
-        // 简单起见，先用第一个
-        ServiceInfo selectedServiceInfo = serviceInfoList.get(0);
-        logger.debug("selected info = " + selectedServiceInfo.getUrlAddress());
-        return NettyClientFactory.getNettyClient(selectedServiceInfo.getUrlAddress());
+        URLAddress targetProviderAddress = ConsumerRpcContextHolder.getConsumerRpcContext().getTargetProviderAddress();
+        if(targetProviderAddress == null) {
+            // 未强制指定被调用方地址，负载均衡获得调用的服务端(正常逻辑)
+            ServiceInfo selectedServiceInfo = loadBalance.select(serviceInfoList);
+            logger.debug("selected info = " + selectedServiceInfo.getUrlAddress());
+            return NettyClientFactory.getNettyClient(selectedServiceInfo.getUrlAddress());
+        }else{
+            // 从注册服务的中找到指定的服务
+            ServiceInfo targetServiceInfo = serviceInfoList.stream()
+                .filter(item->item.getUrlAddress().equals(targetProviderAddress))
+                .findAny()
+                // 找不到，抛异常
+                .orElseThrow(()->new MyRpcException("set targetProviderAddress，but can not find. targetProviderAddress=" + targetProviderAddress));
+            return NettyClientFactory.getNettyClient(targetServiceInfo.getUrlAddress());
+        }
     }
 }
