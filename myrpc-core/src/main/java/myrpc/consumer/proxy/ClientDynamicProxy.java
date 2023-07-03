@@ -15,6 +15,7 @@ import myrpc.exchange.model.MessageHeader;
 import myrpc.exchange.model.MessageProtocol;
 import myrpc.exchange.model.RpcRequest;
 import myrpc.exchange.model.RpcResponse;
+import myrpc.util.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,10 +39,10 @@ public class ClientDynamicProxy implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        Object localMethodResult = processLocalMethod(proxy,method,args);
-        if(localMethodResult != null){
-            // 处理toString等对象自带方法，不发起rpc调用
-            return localMethodResult;
+        Tuple<Object,Boolean> localMethodResult = processLocalMethod(proxy,method,args);
+        if(localMethodResult.getRight()){
+            // right为true,代表是本地方法，返回toString等对象自带方法的执行结果，不发起rpc调用
+            return localMethodResult.getLeft();
         }
 
         logger.debug("ClientDynamicProxy before: methodName=" + method.getName());
@@ -79,25 +80,29 @@ public class ClientDynamicProxy implements InvocationHandler {
         return processRpcResponse(rpcResponse);
     }
 
-    private Object processLocalMethod(Object proxy, Method method, Object[] args) throws Exception {
+    /**
+     * 处理本地方法
+     * @return tuple.right 标识是否是本地方法， true是
+     * */
+    private Tuple<Object,Boolean> processLocalMethod(Object proxy, Method method, Object[] args) throws Exception {
         // 处理toString等对象自带方法，不发起rpc调用
         if (method.getDeclaringClass() == Object.class) {
-            return method.invoke(proxy, args);
+            return new Tuple<>(method.invoke(proxy, args),true);
         }
         String methodName = method.getName();
         Class<?>[] parameterTypes = method.getParameterTypes();
         if (parameterTypes.length == 0) {
             if ("toString".equals(methodName)) {
-                return proxy.toString();
+                return new Tuple<>(proxy.toString(),true);
             } else if ("hashCode".equals(methodName)) {
-                return proxy.hashCode();
+                return new Tuple<>(proxy.hashCode(),true);
             }
         } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
-            return proxy.equals(args[0]);
+            return new Tuple<>(proxy.equals(args[0]),true);
         }
 
         // 返回null标识非本地方法，需要进行rpc调用
-        return null;
+        return new Tuple<>(null,false);
     }
 
     private Object processRpcResponse(RpcResponse rpcResponse){
