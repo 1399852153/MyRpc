@@ -16,6 +16,8 @@ import myrpc.exchange.model.MessageHeader;
 import myrpc.exchange.model.MessageProtocol;
 import myrpc.exchange.model.RpcRequest;
 import myrpc.exchange.model.RpcResponse;
+import myrpc.invoker.impl.FastFailInvoker;
+import myrpc.invoker.Invoker;
 import myrpc.netty.client.NettyClient;
 import myrpc.netty.client.NettyClientFactory;
 import myrpc.registry.Registry;
@@ -36,10 +38,12 @@ public class ClientDynamicProxy implements InvocationHandler {
 
     private final Registry registry;
     private final LoadBalance loadBalance;
+    private final Invoker invoker;
 
-    public ClientDynamicProxy(Registry registry, LoadBalance loadBalance) {
+    public ClientDynamicProxy(Registry registry, LoadBalance loadBalance, Invoker invoker) {
         this.registry = registry;
         this.loadBalance = loadBalance;
+        this.invoker = invoker;
     }
 
     @Override
@@ -53,8 +57,6 @@ public class ClientDynamicProxy implements InvocationHandler {
         logger.debug("ClientDynamicProxy before: methodName=" + method.getName());
 
         String serviceName = method.getDeclaringClass().getName();
-        List<ServiceInfo> serviceInfoList = registry.discovery(serviceName);
-        logger.debug("serviceInfoList.size={},serviceInfoList={}",serviceInfoList.size(),JsonUtil.obj2Str(serviceInfoList));
 
         // 构造请求和协议头
         RpcRequest rpcRequest = new RpcRequest();
@@ -73,18 +75,20 @@ public class ClientDynamicProxy implements InvocationHandler {
 
         logger.debug("ClientDynamicProxy rpcRequest={}", JsonUtil.obj2Str(rpcRequest));
 
-        NettyClient nettyClient = getTargetClient(serviceInfoList);
-        logger.info("ClientDynamicProxy getTargetClient={}", nettyClient);
-        Channel channel = nettyClient.getChannel();
+        RpcResponse rpcResponse = this.invoker.invoke((nettyClient)->{
+            Channel channel = nettyClient.getChannel();
+            // 将netty的异步转为同步,参考dubbo DefaultFuture
+            DefaultFuture<RpcResponse> newDefaultFuture = DefaultFutureManager.createNewFuture(channel,rpcRequest);
 
-        // 通过Promise，将netty的异步转为同步,参考dubbo DefaultFuture
-        DefaultFuture<RpcResponse> defaultFuture = DefaultFutureManager.createNewFuture(channel,rpcRequest);
+            try {
+                nettyClient.send(new MessageProtocol<>(messageHeader,rpcRequest));
 
-        channel.writeAndFlush(new MessageProtocol<>(messageHeader,rpcRequest));
-        logger.debug("ClientDynamicProxy writeAndFlush success, wait result");
-
-        // 调用方阻塞在这里
-        RpcResponse rpcResponse = defaultFuture.get();
+                // 调用方阻塞在这里
+                return newDefaultFuture.get();
+            } catch (Exception e) {
+                throw new MyRpcException("InvokerCallable error!",e);
+            }
+        },serviceName,registry,loadBalance);
 
         logger.debug("ClientDynamicProxy defaultFuture.get() rpcResponse={}",rpcResponse);
 

@@ -4,6 +4,7 @@ import io.netty.bootstrap.Bootstrap;
 import myrpc.balance.LoadBalance;
 import myrpc.common.model.URLAddress;
 import myrpc.consumer.proxy.ClientDynamicProxy;
+import myrpc.invoker.Invoker;
 import myrpc.registry.Registry;
 
 import java.lang.reflect.Proxy;
@@ -17,10 +18,10 @@ public class Consumer<T> {
     private final T proxy;
 
 
-    public Consumer(Class<?> interfaceClass,  Registry registry, LoadBalance loadBalance) {
+    public Consumer(Class<?> interfaceClass, Registry registry, LoadBalance loadBalance, Invoker invoker) {
         this.interfaceClass = interfaceClass;
 
-        ClientDynamicProxy clientDynamicProxy = new ClientDynamicProxy(registry,loadBalance);
+        ClientDynamicProxy clientDynamicProxy = new ClientDynamicProxy(registry,loadBalance,invoker);
 
         this.proxy = (T) Proxy.newProxyInstance(
                 clientDynamicProxy.getClass().getClassLoader(),

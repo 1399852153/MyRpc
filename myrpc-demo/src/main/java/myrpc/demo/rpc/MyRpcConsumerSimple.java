@@ -5,7 +5,9 @@ import myrpc.consumer.Consumer;
 import myrpc.consumer.ConsumerBootstrap;
 import myrpc.demo.common.model.User;
 import myrpc.demo.common.service.UserService;
+import myrpc.invoker.impl.BroadcastInvoker;
 import myrpc.invoker.impl.FailoverInvoker;
+import myrpc.invoker.impl.FastFailInvoker;
 import myrpc.registry.Registry;
 import myrpc.registry.RegistryConfig;
 import myrpc.registry.RegistryFactory;
@@ -16,16 +18,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
 
-public class MyRpcConsumer {
+public class MyRpcConsumerSimple {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         Registry registry = RegistryFactory.getRegistry(
             new RegistryConfig(RegistryCenterTypeEnum.ZOOKEEPER_CURATOR.getCode(), "127.0.0.1:2181"));
 
         ConsumerBootstrap consumerBootstrap = new ConsumerBootstrap()
             .registry(registry)
             .loadBalance(new SimpleRoundRobinBalance())
-            .invoker(new FailoverInvoker(3));
+            .invoker(new BroadcastInvoker());
 
         // 注册消费者
         Consumer<UserService> consumer = consumerBootstrap.registerConsumer(UserService.class);
@@ -37,24 +39,6 @@ public class MyRpcConsumer {
         // 发起rpc调用并获得返回值
         User userFriend = userService.getUserFriend(user,message);
         System.out.println("userService.getUserFriend result=" + userFriend);
-
-        try {
-            userService.hasException("666");
-        }catch (Exception e){
-            System.out.println("userService.hasException!");
-            e.printStackTrace();
-        }
-
-        {
-            Thread.sleep(200L);
-            Map<String,User> paramMap = new HashMap<>();
-            paramMap.put("1",new User("a",10));
-            paramMap.put("2",new User("b",10));
-            paramMap.put("3",new User("c",10));
-
-            List<User> response = userService.getFriends(paramMap);
-            System.out.println("paramMap=" + paramMap + " response=" + response);
-        }
 
         LockSupport.park();
     }
