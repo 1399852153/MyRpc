@@ -102,7 +102,7 @@ public class ZkCuratorRegistry implements Registry {
     }
 
     private String getServiceNameNodePath(String serviceName) {
-        return ZK_BASE_PATH + "/" + serviceName;
+        return MyRpcRegistryConstants.BASE_PATH + "/" + serviceName;
     }
 
     private List<ServiceInfo> findProviderInfoList(String serviceName) {

@@ -14,7 +14,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 简易的zk注册中心(原始的zk客户端很多地方都需要用户去处理异常，但为了更简单的展示zk注册中心的使用，基本上没有处理异常情况)
+ * 简易的zk注册中心(原始的zk客户端很多地方都需要用户去处理异常，但为了更简单的展示zk注册中心的使用，基本上没有处理这些异常情况)
  * */
 public class ZookeeperRegistry implements Registry{
 
@@ -29,7 +29,7 @@ public class ZookeeperRegistry implements Registry{
             this.zooKeeper = new ZooKeeper(zkServerAddress,2000, event -> {});
 
             // 确保root节点是一定存在的
-            createPersistentNode(ZK_BASE_PATH);
+            createPersistentNode(MyRpcRegistryConstants.BASE_PATH);
         } catch (Exception e) {
             throw new MyRpcException("init zkClient error",e);
         }
@@ -49,7 +49,7 @@ public class ZookeeperRegistry implements Registry{
     }
 
     private String getServiceNameNodePath(String serviceName){
-        return ZK_BASE_PATH + "/" + serviceName;
+        return MyRpcRegistryConstants.BASE_PATH + "/" + serviceName;
     }
 
     // ================================ zk工具方法 ==================================

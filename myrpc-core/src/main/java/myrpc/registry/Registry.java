@@ -9,8 +9,6 @@ import java.util.List;
  * */
 public interface Registry {
 
-    String ZK_BASE_PATH = "/my_rpc";
-
     /**
      * 服务注册
      * */
