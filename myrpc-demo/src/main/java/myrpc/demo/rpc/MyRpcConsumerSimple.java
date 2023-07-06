@@ -26,11 +26,11 @@ public class MyRpcConsumerSimple {
 
         ConsumerBootstrap consumerBootstrap = new ConsumerBootstrap()
             .registry(registry)
-            .loadBalance(new SimpleRoundRobinBalance())
-            .invoker(new BroadcastInvoker());
+            .loadBalance(new SimpleRoundRobinBalance());
 
         // 注册消费者
-        Consumer<UserService> consumer = consumerBootstrap.registerConsumer(UserService.class);
+        Consumer<UserService> consumer = consumerBootstrap.registerConsumer(
+            UserService.class,new BroadcastInvoker());
         // 获得UserService的代理对象
         UserService userService = consumer.getProxy();
 

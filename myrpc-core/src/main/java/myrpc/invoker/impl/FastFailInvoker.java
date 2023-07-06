@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 /**
- * 快速失败，调用1次就返回
+ * 快速失败，无论成功与否调用1次就返回
  * */
 public class FastFailInvoker implements Invoker {
 

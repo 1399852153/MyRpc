@@ -4,10 +4,7 @@ import io.netty.channel.Channel;
 import myrpc.balance.LoadBalance;
 import myrpc.common.config.GlobalConfig;
 import myrpc.common.enums.MessageFlagEnums;
-import myrpc.common.model.ServiceInfo;
-import myrpc.common.model.URLAddress;
 import myrpc.common.util.JsonUtil;
-import myrpc.consumer.context.ConsumerRpcContextHolder;
 import myrpc.exception.MyRpcException;
 import myrpc.exception.MyRpcRemotingException;
 import myrpc.exchange.DefaultFuture;
@@ -16,10 +13,7 @@ import myrpc.exchange.model.MessageHeader;
 import myrpc.exchange.model.MessageProtocol;
 import myrpc.exchange.model.RpcRequest;
 import myrpc.exchange.model.RpcResponse;
-import myrpc.invoker.impl.FastFailInvoker;
 import myrpc.invoker.Invoker;
-import myrpc.netty.client.NettyClient;
-import myrpc.netty.client.NettyClientFactory;
 import myrpc.registry.Registry;
 import myrpc.util.Tuple;
 import org.slf4j.Logger;
@@ -27,7 +21,6 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.List;
 
 /**
  * 客户端动态代理
@@ -127,24 +120,6 @@ public class ClientDynamicProxy implements InvocationHandler {
         }else{
             // 有异常，往外抛出去
             throw new MyRpcRemotingException(rpcResponse.getExceptionValue());
-        }
-    }
-
-    private NettyClient getTargetClient(List<ServiceInfo> serviceInfoList){
-        URLAddress targetProviderAddress = ConsumerRpcContextHolder.getConsumerRpcContext().getTargetProviderAddress();
-        if(targetProviderAddress == null) {
-            // 未强制指定被调用方地址，负载均衡获得调用的服务端(正常逻辑)
-            ServiceInfo selectedServiceInfo = loadBalance.select(serviceInfoList);
-            logger.debug("selected info = " + selectedServiceInfo.getUrlAddress());
-            return NettyClientFactory.getNettyClient(selectedServiceInfo.getUrlAddress());
-        }else{
-            // 从注册服务的中找到指定的服务
-            ServiceInfo targetServiceInfo = serviceInfoList.stream()
-                .filter(item->item.getUrlAddress().equals(targetProviderAddress))
-                .findAny()
-                // 找不到，抛异常
-                .orElseThrow(()->new MyRpcException("set targetProviderAddress，but can not find. targetProviderAddress=" + targetProviderAddress));
-            return NettyClientFactory.getNettyClient(targetServiceInfo.getUrlAddress());
         }
     }
 }

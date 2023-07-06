@@ -366,6 +366,290 @@ public class SimpleRoundRobinBalance implements LoadBalance{
 }
 ```
 ## 4. 支持多种集群服务调用方式
+由于需要通过网络发起rpc调用，比起本地调用很容易因为网络波动、远端机器故障等原因而导致调用失败。  
+客户端有时希望能通过重试等方式屏蔽掉可能出现的偶发错误，尽可能的保证rpc请求的成功率，最好rpc框架能解决这个问题。
+另一方面，能够安全重试的基础是下游服务能够做到幂等，否则重复的请求会带来意想不到的后果，而不幂等的下游服务只能至多调用一次。  
+因此rpc框架需要能允许用户不同的服务可以有不同的集群服务调用方式，这样幂等的服务可以配置成可自动重试N次的failover调用，或者只能调用1次的fast-fail调用等。
+#####
+MyRpc的Invoker接口用于抽象上述的不同集群调用方式，并简单的实现了failover和fast-fail等多种调用方式（参考dubbo）。
+```java
+public interface InvokerCallable {
+    RpcResponse invoke(NettyClient nettyClient);
+}
+```
+```java
+/**
+ * 不同的集群调用方式
+ * */
+public interface Invoker {
 
+    RpcResponse invoke(InvokerCallable callable, String serviceName,
+                                      Registry registry, LoadBalance loadBalance);
+}
+```
+```java
+/**
+ * 快速失败，无论成功与否调用1次就返回
+ * */
+public class FastFailInvoker implements Invoker {
+
+  private static final Logger logger = LoggerFactory.getLogger(FastFailInvoker.class);
+
+  @Override
+  public RpcResponse invoke(InvokerCallable callable, String serviceName,
+                            Registry registry, LoadBalance loadBalance) {
+    List<ServiceInfo> serviceInfoList = registry.discovery(serviceName);
+    logger.debug("serviceInfoList.size={},serviceInfoList={}",serviceInfoList.size(), JsonUtil.obj2Str(serviceInfoList));
+    NettyClient nettyClient = InvokerUtil.getTargetClient(serviceInfoList,loadBalance);
+    logger.info("ClientDynamicProxy getTargetClient={}", nettyClient);
+
+    // fast-fail，简单的调用一次就行，有错误就直接向上抛
+    return callable.invoke(nettyClient);
+  }
+}
+```
+```java
+/**
+ * 故障转移调用(如果调用出现了错误，则重试指定次数)
+ * 1 如果重试过程中成功了，则快读返回
+ * 2 如果重试了指定次数后还是没成功，则抛出异常
+ * */
+public class FailoverInvoker implements Invoker {
+
+    private static final Logger logger = LoggerFactory.getLogger(FailoverInvoker.class);
+
+    private final int defaultRetryCount = 2;
+    private final int retryCount;
+
+    public FailoverInvoker() {
+        this.retryCount = defaultRetryCount;
+    }
+
+    public FailoverInvoker(int retryCount) {
+        this.retryCount = Math.max(retryCount,1);
+    }
+
+    @Override
+    public RpcResponse invoke(InvokerCallable callable, String serviceName, Registry registry, LoadBalance loadBalance) {
+        MyRpcException myRpcException = null;
+
+        for(int i=0; i<retryCount; i++){
+            List<ServiceInfo> serviceInfoList = registry.discovery(serviceName);
+            logger.debug("serviceInfoList.size={},serviceInfoList={}",serviceInfoList.size(), JsonUtil.obj2Str(serviceInfoList));
+            NettyClient nettyClient = InvokerUtil.getTargetClient(serviceInfoList,loadBalance);
+            logger.info("ClientDynamicProxy getTargetClient={}", nettyClient);
+
+            try {
+                RpcResponse rpcResponse = callable.invoke(nettyClient);
+                if(myRpcException != null){
+                    // 虽然最终重试成功了，但是之前请求失败过
+                    logger.warn("FailRetryInvoker finally success, but there have been failed providers");
+                }
+                return rpcResponse;
+            }catch (Exception e){
+                myRpcException = new MyRpcException(e);
+
+                logger.warn("FailRetryInvoker callable.invoke error",e);
+            }
+        }
+
+        // 走到这里说明经过了retryCount次重试依然不成功，myRpcException一定不为null
+        throw myRpcException;
+    }
+}
+```
+##### 接入invoker之后的客户端请求逻辑
+```java
+/**
+ * 客户端动态代理
+ * */
+public class ClientDynamicProxy implements InvocationHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(ClientDynamicProxy.class);
+
+    private final Registry registry;
+    private final LoadBalance loadBalance;
+    private final Invoker invoker;
+
+    public ClientDynamicProxy(Registry registry, LoadBalance loadBalance, Invoker invoker) {
+        this.registry = registry;
+        this.loadBalance = loadBalance;
+        this.invoker = invoker;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        Tuple<Object,Boolean> localMethodResult = processLocalMethod(proxy,method,args);
+        if(localMethodResult.getRight()){
+            // right为true,代表是本地方法，返回toString等对象自带方法的执行结果，不发起rpc调用
+            return localMethodResult.getLeft();
+        }
+
+        logger.debug("ClientDynamicProxy before: methodName=" + method.getName());
+
+        String serviceName = method.getDeclaringClass().getName();
+
+        // 构造请求和协议头
+        RpcRequest rpcRequest = new RpcRequest();
+        rpcRequest.setInterfaceName(method.getDeclaringClass().getName());
+        rpcRequest.setMethodName(method.getName());
+        rpcRequest.setParameterClasses(method.getParameterTypes());
+        rpcRequest.setParams(args);
+
+        MessageHeader messageHeader = new MessageHeader();
+        messageHeader.setMessageFlag(MessageFlagEnums.REQUEST.getCode());
+        messageHeader.setTwoWayFlag(false);
+        messageHeader.setEventFlag(true);
+        messageHeader.setSerializeType(GlobalConfig.messageSerializeType.getCode());
+        messageHeader.setResponseStatus((byte)'a');
+        messageHeader.setMessageId(rpcRequest.getMessageId());
+
+        logger.debug("ClientDynamicProxy rpcRequest={}", JsonUtil.obj2Str(rpcRequest));
+
+        RpcResponse rpcResponse = this.invoker.invoke((nettyClient)->{
+            Channel channel = nettyClient.getChannel();
+            // 将netty的异步转为同步,参考dubbo DefaultFuture
+            DefaultFuture<RpcResponse> newDefaultFuture = DefaultFutureManager.createNewFuture(channel,rpcRequest);
+
+            try {
+                nettyClient.send(new MessageProtocol<>(messageHeader,rpcRequest));
+
+                // 调用方阻塞在这里
+                return newDefaultFuture.get();
+            } catch (Exception e) {
+                throw new MyRpcException("InvokerCallable error!",e);
+            }
+        },serviceName,registry,loadBalance);
+
+        logger.debug("ClientDynamicProxy defaultFuture.get() rpcResponse={}",rpcResponse);
+
+        return processRpcResponse(rpcResponse);
+    }
+
+    /**
+     * 处理本地方法
+     * @return tuple.right 标识是否是本地方法， true是
+     * */
+    private Tuple<Object,Boolean> processLocalMethod(Object proxy, Method method, Object[] args) throws Exception {
+        // 处理toString等对象自带方法，不发起rpc调用
+        if (method.getDeclaringClass() == Object.class) {
+            return new Tuple<>(method.invoke(proxy, args),true);
+        }
+        String methodName = method.getName();
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        if (parameterTypes.length == 0) {
+            if ("toString".equals(methodName)) {
+                return new Tuple<>(proxy.toString(),true);
+            } else if ("hashCode".equals(methodName)) {
+                return new Tuple<>(proxy.hashCode(),true);
+            }
+        } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
+            return new Tuple<>(proxy.equals(args[0]),true);
+        }
+
+        // 返回null标识非本地方法，需要进行rpc调用
+        return new Tuple<>(null,false);
+    }
+
+    private Object processRpcResponse(RpcResponse rpcResponse){
+        if(rpcResponse.getExceptionValue() == null){
+            // 没有异常，return正常的返回值
+            return rpcResponse.getReturnValue();
+        }else{
+            // 有异常，往外抛出去
+            throw new MyRpcRemotingException(rpcResponse.getExceptionValue());
+        }
+    }
+}
+```
 ## 5. 客户端请求设置超时时间
+客户端发起请求后，可能由于网络原因，可能由于服务端负载过大等原因而迟迟无法收到回复。
+出于性能或者自身业务的考虑，客户端不能无限制的等待下去，因此rpc框架需要能允许客户端设置请求的超时时间。
+在一定的时间内如果无法收到响应则需要抛出超时异常，令调用者及时的感知到问题。
+#####
+在客户端侧DefaultFuture.get方法，指定超时时间是可以做到这一点的。
+但其依赖底层操作系统的定时任务机制，超时时间的精度很高(nanos级别)，但在高并发场景下性能不如时间轮。  
+具体原理可以参考我之前的博客：[时间轮TimeWheel工作原理解析](https://www.cnblogs.com/xiaoxiongcanguan/p/17128575.html)
+#####
+MyRpc参考dubbo，引入时间轮来实现客户端设置请求超时时间的功能。
+```java
+public class DefaultFutureManager {
+
+    private static final Logger logger = LoggerFactory.getLogger(DefaultFutureManager.class);
+
+    public static final Map<Long,DefaultFuture> DEFAULT_FUTURE_CACHE = new ConcurrentHashMap<>();
+    public static final HashedWheelTimer TIMER = new HashedWheelTimer();
+
+    public static void received(RpcResponse rpcResponse){
+        Long messageId = rpcResponse.getMessageId();
+
+        logger.debug("received rpcResponse={},DEFAULT_FUTURE_CACHE={}",rpcResponse,DEFAULT_FUTURE_CACHE);
+        DefaultFuture defaultFuture = DEFAULT_FUTURE_CACHE.remove(messageId);
+
+        if(defaultFuture != null){
+            logger.debug("remove defaultFuture success");
+            if(rpcResponse.getExceptionValue() != null){
+                // 异常处理
+                defaultFuture.completeExceptionally(rpcResponse.getExceptionValue());
+            }else{
+                // 正常返回
+                defaultFuture.complete(rpcResponse);
+            }
+        }else{
+            // 可能超时了，接到响应前已经remove掉了这个future(超时和实际接到请求都会调用received方法)
+            logger.debug("remove defaultFuture fail");
+        }
+    }
+
+    public static DefaultFuture createNewFuture(Channel channel, RpcRequest rpcRequest){
+        DefaultFuture defaultFuture = new DefaultFuture(channel,rpcRequest);
+        // 增加超时处理的逻辑
+        newTimeoutCheck(defaultFuture);
+
+        return defaultFuture;
+    }
+
+    public static DefaultFuture getFuture(long messageId){
+        return DEFAULT_FUTURE_CACHE.get(messageId);
+    }
+
+    /**
+     * 增加请求超时的检查任务
+     * */
+    public static void newTimeoutCheck(DefaultFuture defaultFuture){
+        TimeoutCheckTask timeoutCheckTask = new TimeoutCheckTask(defaultFuture.getMessageId());
+        TIMER.newTimeout(timeoutCheckTask, defaultFuture.getTimeout(), TimeUnit.MILLISECONDS);
+    }
+}
+```
+```java
+public class TimeoutCheckTask implements TimerTask {
+
+    private final long messageId;
+
+    public TimeoutCheckTask(long messageId) {
+        this.messageId = messageId;
+    }
+
+    @Override
+    public void run(Timeout timeout) {
+        DefaultFuture defaultFuture = DefaultFutureManager.getFuture(this.messageId);
+        if(defaultFuture == null || defaultFuture.isDone()){
+            // 请求已经在超时前返回，处理过了,直接返回即可
+            return;
+        }
+
+        // 构造超时的响应
+        RpcResponse rpcResponse = new RpcResponse();
+        rpcResponse.setMessageId(this.messageId);
+        rpcResponse.setExceptionValue(new MyRpcTimeoutException(
+            "request timeout：" + defaultFuture.getTimeout() + " channel=" + defaultFuture.getChannel()));
+
+        DefaultFutureManager.received(rpcResponse);
+    }
+}
+```
 ## 6. 总结
+* 经过两个lib的迭代，目前MyRpc已经是一个麻雀虽小五脏俱全的rpc框架了。
+  虽然无论在功能上还是在各种细节的处理上都还有很多需要优化的地方，但作为一个demo级别的框架，其没有过多的抽象封装，更有利于rpc框架的初学者去理解。  
+* 博客中展示的完整代码在我的github上：https://github.com/1399852153/MyRpc (release/lab2分支)，内容如有错误，还请多多指教。
