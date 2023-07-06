@@ -27,7 +27,8 @@ zookeeper作为一个高性能的分布式协调器，存储的数据以ZNode节
   MyRpc中为了简单起见，服务节点的子节点直接就是对应特定provider注册的临时节点。临时节点中数据保存了provider的ip/port等必要的信息。
   由于是临时节点，在provider因为各种故障而不可用而导致与zookeeper的连接断开，zookeeper会在等待一小会后将该临时节点删除，并通知监听该服务的客户端以刷新客户端的对应配置。
 #####
-todo 附MyRpc的zookeeper节点结构图
+MyRpc的zookeeper节点结构图
+![blog2_img1.png](blog2_img1.png)
 #####
 注册中心接口
 ```java
@@ -652,4 +653,5 @@ public class TimeoutCheckTask implements TimerTask {
 ## 6. 总结
 * 经过两个lib的迭代，目前MyRpc已经是一个麻雀虽小五脏俱全的rpc框架了。
   虽然无论在功能上还是在各种细节的处理上都还有很多需要优化的地方，但作为一个demo级别的框架，其没有过多的抽象封装，更有利于rpc框架的初学者去理解。  
+* 做为Mit6.824课程学习的一部分，rpc的实现到此就暂时告一段落。后续我会继续分享实现简易raft kv数据库的学习心得。 
 * 博客中展示的完整代码在我的github上：https://github.com/1399852153/MyRpc (release/lab2分支)，内容如有错误，还请多多指教。
