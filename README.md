@@ -22,4 +22,5 @@
 8. 支持admin控制台
 
 #####
-lab1博客：https://www.cnblogs.com/xiaoxiongcanguan/p/17506728.html
+lab1博客：[自己动手实现rpc框架(一) 实现点对点的rpc通信](https://www.cnblogs.com/xiaoxiongcanguan/p/17506728.html)
+lab2博客：[自己动手实现rpc框架(二) 实现集群间rpc通信](https://www.cnblogs.com/xiaoxiongcanguan/p/17533373.html)
