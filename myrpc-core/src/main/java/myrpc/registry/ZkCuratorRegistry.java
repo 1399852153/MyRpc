@@ -77,7 +77,7 @@ public class ZkCuratorRegistry implements Registry {
                     .forPath(serviceNameNodePath);
             }
 
-            logger.info("createServiceNameNode success! serviceNameNodePath={}", serviceNameNodePath);
+            logger.debug("createServiceNameNode success! serviceNameNodePath={}", serviceNameNodePath);
         } catch (Exception e) {
             throw new MyRpcException("createServiceNameNode error", e);
         }
@@ -95,7 +95,7 @@ public class ZkCuratorRegistry implements Registry {
             curatorZkClient.create()
                 .withMode(CreateMode.EPHEMERAL)
                 .forPath(providerInfoNodePath, providerInfoJsonStr.getBytes(StandardCharsets.UTF_8));
-            logger.info("createProviderInfoNode success! path={}", providerInfoNodePath);
+            logger.debug("createProviderInfoNode success! path={}", providerInfoNodePath);
         } catch (Exception e) {
             throw new MyRpcException("createProviderInfoNode error", e);
         }
@@ -125,7 +125,7 @@ public class ZkCuratorRegistry implements Registry {
                 }
             }
 
-            logger.info("findProviderInfoList={}",JsonUtil.obj2Str(serviceInfoList));
+            logger.debug("findProviderInfoList={}",JsonUtil.obj2Str(serviceInfoList));
             return serviceInfoList;
         } catch (Exception e) {
             throw new MyRpcException("findProviderInfoList error",e);
@@ -141,7 +141,7 @@ public class ZkCuratorRegistry implements Registry {
 
         @Override
         public void childEvent(CuratorFramework client, PathChildrenCacheEvent event) {
-            logger.info("ZookeeperListener process! serviceName={}",serviceName);
+            logger.debug("ZookeeperListener process! serviceName={}",serviceName);
 
             try {
                 // 刷新缓存

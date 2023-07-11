@@ -27,7 +27,7 @@ public class FastFailInvoker implements Invoker {
         List<ServiceInfo> serviceInfoList = registry.discovery(serviceName);
         logger.debug("serviceInfoList.size={},serviceInfoList={}",serviceInfoList.size(), JsonUtil.obj2Str(serviceInfoList));
         NettyClient nettyClient = InvokerUtil.getTargetClient(serviceInfoList,loadBalance);
-        logger.info("ClientDynamicProxy getTargetClient={}", nettyClient);
+        logger.debug("ClientDynamicProxy getTargetClient={}", nettyClient);
 
         // fast-fail，简单的调用一次就行，有错误就直接向上抛
         return callable.invoke(nettyClient);

@@ -59,7 +59,7 @@ public class ZookeeperRegistry implements Registry{
 
             // 服务名节点是永久节点
             createPersistentNode(serviceNameNodePath);
-            logger.info("createServiceNameNode success! serviceNameNodePath={}",serviceNameNodePath);
+            logger.debug("createServiceNameNode success! serviceNameNodePath={}",serviceNameNodePath);
         } catch (Exception e) {
             throw new MyRpcException("createServiceNameNode error",e);
         }
@@ -74,7 +74,7 @@ public class ZookeeperRegistry implements Registry{
             String providerInfoJsonStr = JsonUtil.obj2Str(serviceInfo);
             // providerInfo节点是临时节点(如果节点宕机了，zk的连接断开一段时间后，临时节点会被自动删除)
             zooKeeper.create(providerInfoNodePath, providerInfoJsonStr.getBytes(StandardCharsets.UTF_8), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
-            logger.info("createProviderInfoNode success! path={}",providerInfoNodePath);
+            logger.debug("createProviderInfoNode success! path={}",providerInfoNodePath);
         } catch (Exception e) {
             throw new MyRpcException("createProviderInfoNode error",e);
         }
@@ -128,7 +128,7 @@ public class ZookeeperRegistry implements Registry{
 
         @Override
         public void process(WatchedEvent event) {
-            logger.info("ZookeeperListener process! path={}",path);
+            logger.debug("ZookeeperListener process! path={}",path);
 
             try {
                 // 刷新缓存

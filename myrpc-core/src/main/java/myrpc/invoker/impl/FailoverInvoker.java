@@ -43,7 +43,7 @@ public class FailoverInvoker implements Invoker {
             List<ServiceInfo> serviceInfoList = registry.discovery(serviceName);
             logger.debug("serviceInfoList.size={},serviceInfoList={}",serviceInfoList.size(), JsonUtil.obj2Str(serviceInfoList));
             NettyClient nettyClient = InvokerUtil.getTargetClient(serviceInfoList,loadBalance);
-            logger.info("ClientDynamicProxy getTargetClient={}", nettyClient);
+            logger.debug("ClientDynamicProxy getTargetClient={}", nettyClient);
 
             try {
                 RpcResponse rpcResponse = callable.invoke(nettyClient);
