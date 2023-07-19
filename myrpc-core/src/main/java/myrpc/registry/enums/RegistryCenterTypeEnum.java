@@ -12,9 +12,10 @@ public enum RegistryCenterTypeEnum {
      * */
     ZOOKEEPER("ZOOKEEPER","zookeeper注册中心(原始客户端)"),
     ZOOKEEPER_CURATOR("ZOOKEEPER_CURATOR","zookeeper注册中心(curator客户端)"),
+    FAKE_REGISTRY("FAKE_REGISTRY","假的配置中心 无实际功能，用于点对点的rpc"),
     ;
-    private String code;
-    private String message;
+    private final String code;
+    private final String message;
 
     RegistryCenterTypeEnum(String code, String message) {
         this.code = code;

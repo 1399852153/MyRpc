@@ -14,6 +14,8 @@ public class RegistryFactory {
                 return new ZookeeperRegistry(registryConfig.getRegistryAddress());
             case ZOOKEEPER_CURATOR:
                 return new ZkCuratorRegistry(registryConfig.getRegistryAddress());
+            case FAKE_REGISTRY:
+                return new FakeRegistry();
             default:
                 throw new MyRpcException("getRegistry type illegal: type=" + registryConfig.getRegistryCenterType());
         }

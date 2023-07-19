@@ -25,13 +25,8 @@ public class InvokerUtil {
             logger.debug("selected info = " + selectedServiceInfo.getUrlAddress());
             return NettyClientFactory.getNettyClient(selectedServiceInfo.getUrlAddress());
         }else{
-            // 从注册服务的中找到指定的服务
-            ServiceInfo targetServiceInfo = serviceInfoList.stream()
-                .filter(item->item.getUrlAddress().equals(targetProviderAddress))
-                .findAny()
-                // 找不到，抛异常
-                .orElseThrow(()->new MyRpcException("set targetProviderAddress，but can not find. targetProviderAddress=" + targetProviderAddress));
-            return NettyClientFactory.getNettyClient(targetServiceInfo.getUrlAddress());
+            // 用于点对点的rpc，直接用上下文里的地址
+            return NettyClientFactory.getNettyClient(targetProviderAddress);
         }
     }
 }
