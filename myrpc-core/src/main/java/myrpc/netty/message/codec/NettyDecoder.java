@@ -24,10 +24,10 @@ public class NettyDecoder extends ByteToMessageDecoder {
 
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list){
-
-        // 保存读取前的读指针
-        int beforeReadIndex = byteBuf.readerIndex();
         do{
+            // 保存读取一个完整数据前的读指针
+            int beforeReadIndex = byteBuf.readerIndex();
+
             try {
                 MessageDecodeResult messageDecodeResult = decodeHeader(byteBuf);
 
