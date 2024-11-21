@@ -1,5 +1,6 @@
 package myrpc.netty.server;
 
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import myrpc.common.enums.MessageFlagEnums;
@@ -18,6 +19,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+@ChannelHandler.Sharable
 public class NettyServerHandler extends SimpleChannelInboundHandler<MessageProtocol<RpcRequest>> {
 
     private static final Logger logger = LoggerFactory.getLogger(NettyServerHandler.class);

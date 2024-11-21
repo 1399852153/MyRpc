@@ -44,6 +44,7 @@ public class NettyServer {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1, new DefaultThreadFactory("NettyServerBoss", true));
         EventLoopGroup workerGroup = new NioEventLoopGroup(DEFAULT_IO_THREADS,new DefaultThreadFactory("NettyServerWorker", true));
 
+        NettyServerHandler nettyServerHandler = new NettyServerHandler();
         bootstrap.group(bossGroup, workerGroup)
             .channel(NioServerSocketChannel.class)
             .childHandler(new ChannelInitializer<SocketChannel>() {
@@ -56,8 +57,8 @@ public class NettyServer {
                         // 心跳处理器
 //                                .addLast("server-idle-handler",
 //                                        new IdleStateHandler(0, 0, 5, MILLISECONDS))
-                        // 实际调用业务方法的处理器
-                        .addLast("serverHandler",new NettyServerHandler())
+                        // 实际调用业务方法的处理器 （单例）
+                        .addLast("serverHandler",nettyServerHandler)
                     ;
                 }
             });
